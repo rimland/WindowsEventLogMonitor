@@ -47,34 +47,42 @@ namespace WindowsEventLogMonitor
 
         public static void MyOnEntryWritten(object source, EntryWrittenEventArgs e)
         {
-            Output($"In EntryWrittenEventHandler");
             EventLogEntry entry = e.Entry;
+
+            Output($"In EntryWrittenEventHandler, EntryType: {entry.EntryType}");
 
             if (entry.EntryType == EventLogEntryType.Error)
             {
-                var strArr = entry.ReplacementStrings;
-                if (strArr.Contains(moduleName))
+                try
                 {
-                    Thread.Sleep(500);
-
-                    var filePath = strArr.FirstOrDefault(s => s.EndsWith($@"\{moduleName}") && s.Contains(":"));
-
-                    //先强制结束原来的程序
-                    var processes = Process.GetProcessesByName(processName);
-                    if (processes.Length > 0)
+                    var strArr = entry.ReplacementStrings;
+                    if (strArr.Contains(moduleName))
                     {
-                        var process = processes.FirstOrDefault(p => p.MainModule.FileName == filePath);
-                        if (process != null)
+                        Thread.Sleep(500);
+
+                        var filePath = strArr.FirstOrDefault(s => s.EndsWith($@"\{moduleName}") && s.Contains(":"));
+
+                        //先强制结束原来的程序
+                        var processes = Process.GetProcessesByName(processName);
+                        if (processes.Length > 0)
                         {
-                            Output($"强制结束原来的程序：{process.MainModule.FileName}");
-                            process.Kill();
-                            Thread.Sleep(500);
+                            var process = processes.FirstOrDefault(p => p.MainModule.FileName == filePath);
+                            if (process != null)
+                            {
+                                Output($"强制结束原来的程序：{process.MainModule.FileName}");
+                                process.Kill();
+                                process.WaitForExit(3000);
+                            }
                         }
+                        Output($"启动 {filePath}");
+                        //启动进程
+                        Process.Start(filePath);
+                        Output("启动成功");
                     }
-                    Output($"启动 {filePath}");
-                    //启动进程
-                    Process.Start(filePath);
-                    Output("启动成功");
+                }
+                catch(Exception ex)
+                {
+                    Output($"{ex.Message}, {ex.StackTrace}");
                 }
             }
         }
